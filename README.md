@@ -1,4 +1,3 @@
 ## Vizzy
-Visualize data locally.
-
-https://dakota-whitney.github.io/vizzy/
+Visualize data locally.\
+[dakota-whitney.github.io/vizzy](https://dakota-whitney.github.io/vizzy/)
