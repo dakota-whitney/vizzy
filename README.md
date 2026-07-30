@@ -1,0 +1,2 @@
+## Vizzy
+Visualize data locally.
