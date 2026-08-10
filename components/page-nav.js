@@ -5,16 +5,17 @@ class PageNav extends HTMLElement {
         this.navbar = document.querySelector('.topnav-menu');
         this.sidebar = document.querySelector('.sidebar-menu');
         this.header = document.querySelector('.app-content-header');
+        this.alert = document.getElementById('alert-template');
         this.content = document.getElementById('page-content');
-        this._navs = {};
     };
+    static #navs = {};
     static get navs(){
-        return this._navs;
+        return this.#navs;
     };
     static set navs(pageNav){
-        this._navs[pageNav.slugify()] = this.sidebar.appendChild(pageNav);
+        this.#navs[pageNav.slugify()] = this.sidebar.appendChild(pageNav);
     };
-    static async defineAll(){
+    static async onLoad(){
         const topNavs = [...this.navbar.querySelectorAll('*')];
         const sideNavs = [...this.sidebar.querySelectorAll('*')];
         const navs = [...topNavs, ...sideNavs].filter(nav => nav.localName.includes('page'));
@@ -25,10 +26,10 @@ class PageNav extends HTMLElement {
         };
 
         this.default = navs[navs.length - 1];
-        this._navs = Object.fromEntries(navs.map(nav => [nav.slugify(), nav]));
+        this.#navs = Object.fromEntries(navs.map(nav => [nav.slugify(), nav]));
 
         const slug = location.hash.split('/').pop();
-        this._navs[slug]?.render() || this.default.render();
+        this.#navs[slug]?.render() || this.default.render();
     };
     static onNavigate(event){
         if(event.state) this.navs[event.state.page]?.render();
@@ -42,8 +43,14 @@ class PageNav extends HTMLElement {
             this.wrapper.style.opacity = 'initial';
         };
     };
+    static showAlert(alertText){
+        const alert = this.alert.content.cloneNode(true);
+        alert.querySelector('.alert').prepend(alertText);
+        this.header.querySelector('.container-fluid').prepend(alert);
+    };
     constructor() {
         super();
+        this.template = null;
         this.page = PageNav.content;
     };
     connectedCallback(){
@@ -72,30 +79,25 @@ class PageNav extends HTMLElement {
         li.append(a);
         this.append(li);
     };
-    async getTemplate(){
+    async #getTemplate(templateId){
+        const template = document.getElementById(templateId);
+        if(template) return this.template = template;
         this.template = document.createElement('template');
-        const page = await fetch(`pages/${this.id}/${this.id}.html`);
+        const page = await fetch(templateId || `pages/${this.id}/${this.id}.html`);
         this.template.innerHTML = await page.text();
         return this.template;
     };
     async render(templateId = ''){
-
         const active = document.querySelector('.nav-link.active');
         if(active) active.classList.remove('active');
         this.querySelector('a').classList.add('active');
-
-        if(!this.template) this.template = templateId ? 
-            document.getElementById(templateId) : 
-            await this.getTemplate();
-        
+        if(!this.template) await this.#getTemplate(templateId)
         if(this.dataset.header) this.#showHeader();
         else PageNav.header.classList.add('d-none');
-
         const page = this.template.content.cloneNode(true);
         PageNav.content.replaceChildren(page);
-
         const slug = this.slugify();
-        history.pushState({page: slug}, "", `#/${slug}`);
+        history.pushState({page: slug}, "");
     };
     #showHeader(){
         PageNav.header.classList.remove('d-none');
@@ -108,4 +110,4 @@ class PageNav extends HTMLElement {
 };
 
 customElements.define('page-nav', PageNav);
-PageNav.defineAll().then(() => window.addEventListener('popstate', e => PageNav.onNavigate(e)));
+PageNav.onLoad().then(() => window.addEventListener('popstate', e => PageNav.onNavigate(e)));

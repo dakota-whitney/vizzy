@@ -7,7 +7,7 @@ class TableNav extends PageNav {
             res({version: db.version, tables: [...db.objectStoreNames]});
         };
     });
-    static renderStorage(usage, quota){
+    static #renderStorage(usage, quota){
         const storage = PageNav.navbar.querySelector('#storage a');
         usage = Math.round(usage / 1024 / 1024);
         usage = usage + 'MB';
@@ -21,7 +21,7 @@ class TableNav extends PageNav {
             usage: storageInfo.usageDetails.indexedDB || 0,
             quota: storageInfo.quota
         };
-        this.renderStorage(dbInfo.usage, dbInfo.quota);
+        this.#renderStorage(dbInfo.usage, dbInfo.quota);
         const dbs = await indexedDB.databases();
         const dbExists = dbs.some(db => db.name === 'Vizzy');
         if(!dbExists) dbInfo = {...dbInfo, version: 1, tables: []};
@@ -40,15 +40,11 @@ class TableNav extends PageNav {
     };
     static onUpload(event){
         const { name: tableName, replace } = event.detail;
-        let tableNav = this.create(tableName);
-        const selector = `table-nav[data-name='${tableName}']`;
-        if(replace) PageNav.sidebar.querySelector(selector).replaceWith(tableNav);
-        else PageNav.sidebar.append(tableNav);
-        tableNav = PageNav.sidebar.querySelector(selector);
-        PageNav.navs[tableNav.slugify()] = tableNav;
+        const tableNav = this.create(tableName);
+        PageNav.navs = tableNav;
         tableNav.render();
         const dbInfo = JSON.parse(sessionStorage.getItem('Vizzy'));
-        this.renderStorage(dbInfo.usage, dbInfo.quota);
+        this.#renderStorage(dbInfo.usage, dbInfo.quota);
         PageNav.loading(false);
     };
     constructor() {
@@ -59,38 +55,82 @@ class TableNav extends PageNav {
         const icon = this.querySelector('i');
         icon.onmouseenter = () => icon.style.opacity = '50%';
         icon.onmouseleave = () => icon.style.opacity = 'initial';
-        icon.onclick = () => this.removeTable().then(() => this.remove());
+        icon.onclick = () => this.#removeDBTable().then(() => this.remove());
     };
     async render() {
         PageNav.loading(true);
+        this.data = await this.#getDBTable();
         await super.render('table-template');
-        const options = await this.getOptions();
-        new DataTable('table', options);
-        PageNav.loading(false);
-    };
-    async getOptions(){
-        const data = await this.getData();
-        const columns = Object.keys(data[0]).map(column => {
-            return {
-                data: column, 
-                title: column, 
-                defaultContent: 'N/A'
-            };
+
+        const options = this.options;
+        this.table = new DataTable('table', options);
+
+        const axisSelects = this.page.querySelectorAll('.axis-select');
+        axisSelects.forEach(select => {
+            options.columns
+                .map(({name}) => new Option(name, name))
+                .forEach(option => select.add(option))
+
+            select.addEventListener('change', () => {
+                const [ axis ] = select.id.split('-')
+                console.log(select.value);
+                this.axis[axis] = select.value;
+                // this.#renderPlot();
+            });
         });
 
-        const columnControl = {
-            target: 0,
-            content: ['order', ['orderAsc', 'orderDesc', 'search']]
+        axisSelects[0].selectedIndex = 0;
+        axisSelects[0].selectedIndex = 1;
+
+        this.axis = {
+            x: axisSelects[0].value,
+            y: axisSelects[1].value
         };
 
-        return { columns, data, columnControl };
+        const plotSelect = this.page.querySelector('#plot-type');
+        plotSelect.addEventListener('change', () => {
+            this.plotType = plotSelect.value;
+            this.page.querySelector('#y-axis').disabled = this.plotType === 'pie';
+            // this.#renderPlot();
+        });
+
+        this.plotType = plotSelect.value;
+        this.plotDiv = this.page.querySelector('#plot');
+
+        // this.table.on('search', () => this.#renderPlot());
+        this.page.querySelector('.btn').addEventListener('click', () => this.#renderPlot())
+        PageNav.loading(false);
     };
-    getData = () => new Promise((res, rej) => {
+    get options(){
+        return {
+            columns: Object.keys(this.data[0]).map(column => {
+                return {
+                    data: column, 
+                    title: column, 
+                    name: column,
+                    defaultContent: ''
+                };
+            }),
+            data: this.data,
+            scroller: true,
+            scrollY: '50vh', 
+            ordering: {
+                indicators: false,
+                handler: false
+            },
+            columnControl: [
+                'order',
+                ['search', 'searchList']
+            ]
+        };
+    };
+    #getDBTable = () => new Promise((res, rej) => {
         const tableName = this.dataset.name;
         console.log('Requesting database');
         const dbRequest = indexedDB.open('Vizzy');
         dbRequest.onerror = error => {
             console.error(error);
+            PageNav.showAlert(error.message);
             rej(error);
         };
         dbRequest.onsuccess = () => {
@@ -106,7 +146,7 @@ class TableNav extends PageNav {
             dataRequest.onsuccess = () => res(dataRequest.result);
         };
     });
-    removeTable = () => new Promise((res, rej) => {
+    #removeDBTable = () => new Promise((res, rej) => {
         PageNav.loading(true);
         const tableName = this.dataset.name;
         const dbInfo = JSON.parse(sessionStorage.getItem('Vizzy'));
@@ -114,13 +154,14 @@ class TableNav extends PageNav {
         const dbRequest = indexedDB.open('Vizzy', ++dbInfo.version);
         dbRequest.onerror = error => {
             console.error(error);
+            PageNav.showAlert(error.message);
             rej(error);
         };
         dbRequest.onupgradeneeded = async () => {
             const db = dbRequest.result;
             console.log(`Deleting table ${tableName}`);
             db.deleteObjectStore(tableName);
-            dbInfo.tables = dbInfo.tables.filter(table => table === tableName);
+            dbInfo.tables = dbInfo.tables.filter(table => table !== tableName);
             const storageInfo = await navigator.storage.estimate();
             dbInfo.usage = storageInfo.usageDetails.indexedDB || 0;
             dbInfo.quota = storageInfo.quota;
@@ -130,6 +171,57 @@ class TableNav extends PageNav {
             res(dbInfo);
         };
     });
+    async #renderPlot(){
+        if(this.axis.x === this.axis.y) return this.plotDiv.replaceChildren();
+        PageNav.loading(true);
+        await new Promise(res => setTimeout(res, 0));
+
+        try {
+            let axisCols = [`${this.axis.x}:name`, `${this.axis.y}:name`];
+            axisCols = this.table.columns(axisCols, {search: 'applied'}).data().toArray();
+
+            const axisDf = new dfd.DataFrame({
+                [this.axis.x]: axisCols[0],
+                [this.axis.y]: axisCols[1]
+            });
+
+
+            const removeBlanks = axisDf[this.axis.x].ne('')
+            axisDf.query(removeBlanks, {inplace: true});
+
+            if(this.plotType === 'line') this.#renderLine(axisDf);
+            else if(this.plotType === 'bar') this.#renderBar(axisDf);
+            else if(this.plotType === 'pie') this.#renderPie(axisDf);
+        } catch(error) {
+            this.plotDiv.replaceChildren();
+            console.error(error);
+            PageNav.showAlert(error.message);
+        };
+
+        PageNav.loading(false);
+    };
+    #renderLine(df){
+        const config = {x: this.axis.x, y: this.axis.y};
+        const layout = {xaxis: {title: this.axis.x}, yaxis: {title: this.axis.y}};
+        df.plot(this.plotDiv).line({ config, layout });
+    };
+    #renderBar(df){
+        const config = {x: this.axis.x, y: this.axis.y};
+        const layout = {xaxis: {title: this.axis.x}, yaxis: {title: this.axis.y}};
+        df.plot(this.plotDiv).bar({ config, layout });
+    };
+    #renderPie(df){
+        const series = df[this.axis.x];
+        const [ nRow ] = series.shape;
+        const allUnique = series.nUnique() === nRow;
+        if(allUnique) return this.plotDiv.replaceChildren();
+        const xCount = df.groupby([this.axis.x]).col([this.axis.x]).count();
+        const config = {
+            values: `${this.axis.x}_count`,
+            labels: this.axis.x
+        };
+        xCount.plot(this.plotDiv).pie({ config });
+    };
 };
 
 customElements.define('table-nav', TableNav);

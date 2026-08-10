@@ -4,7 +4,7 @@ export class UploadPage extends PageNav {
     };
     async render() {
         await super.render();
-        const fileInput = PageNav.content.querySelector('input');
+        const fileInput = this.page.querySelector('input');
         fileInput.addEventListener('change', event => this.uploadFile(event));
     };
     async uploadFile(event){
@@ -34,6 +34,7 @@ export class UploadPage extends PageNav {
         const dbRequest = indexedDB.open('Vizzy');
         dbRequest.onerror = error => {
             console.error(error);
+            PageNav.showAlert(error.message);
             rej(error);
         };
         dbRequest.onsuccess = () => {
@@ -44,6 +45,7 @@ export class UploadPage extends PageNav {
             const clearRequest = table.clear();
             clearRequest.onerror = error => {
                 console.error(error);
+                PageNav.showAlert(error.message);
                 rej(error);
             };
             clearRequest.onsuccess = () => {
@@ -57,6 +59,7 @@ export class UploadPage extends PageNav {
         const dbRequest = indexedDB.open('Vizzy', ++dbInfo.version);
         dbRequest.onerror = error => {
             console.error(error);
+            PageNav.showAlert(error.message);
             rej(error);
         };
         dbRequest.onupgradeneeded = () => {
