@@ -2,6 +2,7 @@ class TableNav extends PageNav {
     static getDBInfo = () => new Promise((res, rej) => {
         const dbRequest = indexedDB.open('Vizzy');
         dbRequest.onerror = e => rej(e);
+
         dbRequest.onsuccess = async () => {
             const db = dbRequest.result;
             res({version: db.version, tables: [...db.objectStoreNames]});
@@ -9,24 +10,33 @@ class TableNav extends PageNav {
     });
     static #renderStorage(usage, quota){
         const storage = PageNav.navbar.querySelector('#storage a');
+
         usage = Math.round(usage / 1024 / 1024);
         usage = usage + 'MB';
+
         quota = Math.round(quota / 1024 / 1024);
         quota = quota + 'MB';
+
         storage.innerHTML = `<span>${usage} / ${quota}</span>`;
     };
     static async onLoad(){
         const storageInfo = await navigator.storage.estimate();
+
         let dbInfo = {
             usage: storageInfo.usageDetails.indexedDB || 0,
             quota: storageInfo.quota
         };
+
         this.#renderStorage(dbInfo.usage, dbInfo.quota);
+
         const dbs = await indexedDB.databases();
         const dbExists = dbs.some(db => db.name === 'Vizzy');
+
         if(!dbExists) dbInfo = {...dbInfo, version: 1, tables: []};
-        else dbInfo = {...dbInfo, ...await this.getDBInfo()}
+        else dbInfo = {...dbInfo, ...await this.getDBInfo()};
+
         sessionStorage.setItem('Vizzy', JSON.stringify(dbInfo));
+
         if(!dbExists) return;
         dbInfo.tables.forEach(tableName => PageNav.navs = this.create(tableName));
     };
@@ -40,11 +50,17 @@ class TableNav extends PageNav {
     };
     static onUpload(event){
         const { name: tableName, replace } = event.detail;
+        const existingNav = PageNav.sidebar.querySelector(`#${tableName}`);
+        
+        if(existingNav) existingNav.remove();
         const tableNav = this.create(tableName);
+
         PageNav.navs = tableNav;
         tableNav.render();
+
         const dbInfo = JSON.parse(sessionStorage.getItem('Vizzy'));
         this.#renderStorage(dbInfo.usage, dbInfo.quota);
+
         PageNav.loading(false);
     };
     constructor() {
@@ -53,8 +69,10 @@ class TableNav extends PageNav {
     connectedCallback(){
         super.connectedCallback();
         const icon = this.querySelector('i');
+
         icon.onmouseenter = () => icon.style.opacity = '50%';
         icon.onmouseleave = () => icon.style.opacity = 'initial';
+
         icon.onclick = () => this.#removeDBTable().then(() => this.remove());
     };
     async render() {
@@ -73,9 +91,7 @@ class TableNav extends PageNav {
 
             select.addEventListener('change', () => {
                 const [ axis ] = select.id.split('-')
-                console.log(select.value);
                 this.axis[axis] = select.value;
-                // this.#renderPlot();
             });
         });
 
@@ -91,13 +107,11 @@ class TableNav extends PageNav {
         plotSelect.addEventListener('change', () => {
             this.plotType = plotSelect.value;
             this.page.querySelector('#y-axis').disabled = this.plotType === 'pie';
-            // this.#renderPlot();
         });
 
         this.plotType = plotSelect.value;
         this.plotDiv = this.page.querySelector('#plot');
 
-        // this.table.on('search', () => this.#renderPlot());
         this.page.querySelector('.btn').addEventListener('click', () => this.#renderPlot())
         PageNav.loading(false);
     };
@@ -126,47 +140,62 @@ class TableNav extends PageNav {
     };
     #getDBTable = () => new Promise((res, rej) => {
         const tableName = this.dataset.name;
+
         console.log('Requesting database');
         const dbRequest = indexedDB.open('Vizzy');
+
         dbRequest.onerror = error => {
             console.error(error);
             PageNav.showAlert(error.message);
             rej(error);
         };
+
         dbRequest.onsuccess = () => {
             const db = dbRequest.result;
             const transaction = db.transaction(tableName);
             const table = transaction.objectStore(tableName);
+
             console.log(`Retrieving data for ${tableName}`);
             const dataRequest = table.getAll();
+
             dataRequest.onerror = error => {
                 console.error(error);
+                PageNav.showAlert(error.message);
                 rej(error);
             };
+
             dataRequest.onsuccess = () => res(dataRequest.result);
         };
     });
     #removeDBTable = () => new Promise((res, rej) => {
         PageNav.loading(true);
+
         const tableName = this.dataset.name;
         const dbInfo = JSON.parse(sessionStorage.getItem('Vizzy'));
+
         console.log('Requesting database');
         const dbRequest = indexedDB.open('Vizzy', ++dbInfo.version);
+
         dbRequest.onerror = error => {
             console.error(error);
             PageNav.showAlert(error.message);
             rej(error);
         };
+
         dbRequest.onupgradeneeded = async () => {
             const db = dbRequest.result;
             console.log(`Deleting table ${tableName}`);
             db.deleteObjectStore(tableName);
+
             dbInfo.tables = dbInfo.tables.filter(table => table !== tableName);
+
             const storageInfo = await navigator.storage.estimate();
             dbInfo.usage = storageInfo.usageDetails.indexedDB || 0;
             dbInfo.quota = storageInfo.quota;
+
             sessionStorage.setItem('Vizzy', JSON.stringify(dbInfo));
             PageNav.default.render();
+
             PageNav.loading(false);
             res(dbInfo);
         };
@@ -213,13 +242,16 @@ class TableNav extends PageNav {
     #renderPie(df){
         const series = df[this.axis.x];
         const [ nRow ] = series.shape;
+
         const allUnique = series.nUnique() === nRow;
         if(allUnique) return this.plotDiv.replaceChildren();
+
         const xCount = df.groupby([this.axis.x]).col([this.axis.x]).count();
         const config = {
             values: `${this.axis.x}_count`,
             labels: this.axis.x
         };
+
         xCount.plot(this.plotDiv).pie({ config });
     };
 };

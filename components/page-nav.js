@@ -82,8 +82,10 @@ class PageNav extends HTMLElement {
     async #getTemplate(templateId){
         const template = document.getElementById(templateId);
         if(template) return this.template = template;
+
         this.template = document.createElement('template');
         const page = await fetch(templateId || `pages/${this.id}/${this.id}.html`);
+
         this.template.innerHTML = await page.text();
         return this.template;
     };
@@ -91,11 +93,15 @@ class PageNav extends HTMLElement {
         const active = document.querySelector('.nav-link.active');
         if(active) active.classList.remove('active');
         this.querySelector('a').classList.add('active');
-        if(!this.template) await this.#getTemplate(templateId)
+
+        if(!this.template) await this.#getTemplate(templateId);
+
         if(this.dataset.header) this.#showHeader();
         else PageNav.header.classList.add('d-none');
+
         const page = this.template.content.cloneNode(true);
         PageNav.content.replaceChildren(page);
+        
         const slug = this.slugify();
         history.pushState({page: slug}, "");
     };
