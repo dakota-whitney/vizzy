@@ -1,165 +1,152 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        <title>Vizzy</title>
+    <title>Vizzy</title>
 
-        <!-- AdminLTE 4 + Bootstrap 5.3 (CSS) -->
-        <link 
-            rel="stylesheet" 
-            href="css/bootstrap-icons-1.13.1.min.css" 
-        />
-        <link 
-            rel="stylesheet" 
-            href="css/overlayscrollbars-2.11.0.min.css" 
-        />
+    <!-- AdminLTE 4 + Bootstrap 5.3 (CSS) -->
+    <link rel="stylesheet" href="css/bootstrap-icons-1.13.1.min.css" />
+    <link rel="stylesheet" href="css/overlayscrollbars-2.11.0.min.css" />
 
-        <link 
-            rel="stylesheet"
-            href="css/adminlte-4.0.0.min.css" 
-        />
+    <link rel="stylesheet" href="css/adminlte-4.0.0.min.css" />
 
-        <!-- DataTables (CSS) -->
-        <link 
-            rel="stylesheet"
-            href="css/datatables-3.0.0.min.css"
-        />
-        <link
-            rel="stylesheet"
-            href="css/global.css"
-        />
-    </head>
-    <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+    <!-- DataTables (CSS) -->
+    <link rel="stylesheet" href="css/datatables-3.0.0.min.css" />
+    <link rel="stylesheet" href="css/global.css" />
+  </head>
+  <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+    <div
+      class="spinner-border z-1 position-absolute top-50 start-50 d-none"
+      style="width: 3rem; height: 3rem"
+      role="status"
+    >
+      <span class="visually-hidden">Loading...</span>
+    </div>
 
-        <div 
-            class="spinner-border z-1 position-absolute top-50 start-50 d-none" 
-            style="width: 3rem; height: 3rem;" 
-            role="status"
-        >
-            <span class="visually-hidden">Loading...</span>
+    <!-- App wrapper -->
+    <div class="app-wrapper">
+      <!-- Header -->
+      <nav class="app-header navbar navbar-expand bg-body">
+        <div class="container-fluid">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                data-lte-toggle="sidebar"
+                href="#"
+                role="button"
+              >
+                <i class="bi bi-list"></i>
+              </a>
+            </li>
+          </ul>
+          <ul class="topnav-menu navbar-nav ms-auto">
+            <li id="storage" class="nav-item">
+              <a class="nav-link"></a>
+            </li>
+            <upload-page
+              id="upload"
+              data-name="Upload"
+              data-icon="upload"
+              data-header="Upload"
+            >
+            </upload-page>
+            <home-page
+              id="home"
+              data-name="Home"
+              data-icon="house"
+              data-header="Welcome"
+            >
+            </home-page>
+          </ul>
         </div>
+      </nav>
 
-        <!-- App wrapper -->
-        <div class="app-wrapper">
-
-            <!-- Header -->
-            <nav class="app-header navbar navbar-expand bg-body">
-                <div class="container-fluid">
-                    <ul class="navbar-nav">
-                        <li class="nav-item">
-                            <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button">
-                                <i class="bi bi-list"></i>
-                            </a>
-                        </li>
-                    </ul>
-                    <ul class="topnav-menu navbar-nav ms-auto">
-                        <li id="storage" class="nav-item">
-                            <a class="nav-link"></a>
-                        </li>
-                        <upload-page
-                            id="upload"
-                            data-name="Upload"
-                            data-icon="upload"
-                            data-header="Upload"
-                        >
-                        </upload-page>
-                        <home-page
-                            id="home"
-                            data-name="Home"
-                            data-icon="house"
-                            data-header="Welcome"
-                        >
-                        </home-page>
-                    </ul>
-                </div>
-            </nav>
-
-            <!-- Sidebar -->
-            <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
-                <div class="sidebar-brand">
-                    <a class="brand-link">
-                        <span class="brand-text fw-light">Vizzy</span>
-                    </a>
-                </div>
-                <div class="sidebar-wrapper">
-                    <nav class="mt-2">
-                        <ul 
-                            class="nav sidebar-menu flex-column" 
-                            data-lte-toggle="treeview" 
-                            role="menu"
-                        >
-                        </ul>
-                    </nav>
-                </div>
-            </aside>
-
-            <!-- Main content -->
-            <main class="app-main">
-                <div class="app-content-header">
-                    <div class="container-fluid">
-                        <h2 id="page-header" class="mb-0"></h2>
-                    </div>
-                </div>
-                <div class="app-content">
-                    <div id="page-content" class="container-fluid"></div>
-                </div>
-            </main>
-
+      <!-- Sidebar -->
+      <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
+        <div class="sidebar-brand">
+          <a class="brand-link">
+            <span class="brand-text fw-light">Vizzy</span>
+          </a>
         </div>
+        <div class="sidebar-wrapper">
+          <nav class="mt-2">
+            <ul
+              class="nav sidebar-menu flex-column"
+              data-lte-toggle="treeview"
+              role="menu"
+            ></ul>
+          </nav>
+        </div>
+      </aside>
 
-        <!-- Table template -->
-        <template id="table-template">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover"></table>
-            </div>
-            <div class="input-group my-3">
-                <label class="input-group-text" for="plot-type">Chart Type</label>
-                <select class="form-select" id="plot-type">
-                    <option value="line">Line</option>
-                    <option value="bar">Bar</option>
-                    <option value="pie">Pie</option>
-                </select>
-            </div>
-            <div class="input-group mb-3">
-                <label class="input-group-text" for="x-axis">X-Axis</label>
-                <select class="form-select axis-select" id="x-axis"></select>
-                <label class="input-group-text" for="y-axis">Y-Axis</label>
-                <select class="form-select axis-select" id="y-axis"></select>
-            </div>
-            <button type="button" class="btn btn-primary d-block mx-auto w-50">Show Chart</button>
-            <div id="plot"></div>
-        </template>
+      <!-- Main content -->
+      <main class="app-main">
+        <div class="app-content-header">
+          <div class="container-fluid">
+            <h2 id="page-header" class="mb-0"></h2>
+          </div>
+        </div>
+        <div class="app-content">
+          <div id="page-content" class="container-fluid"></div>
+        </div>
+      </main>
+    </div>
 
-        <!-- Alert -->
-         <template id="alert-template">
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <button 
-                    type="button" 
-                    class="btn-close" 
-                    data-bs-dismiss="alert" 
-                    aria-label="Close"
-                >
-                </button>
-            </div>
-         </template>
+    <!-- Table template -->
+    <template id="table-template">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover"></table>
+      </div>
+      <div class="input-group my-3">
+        <label class="input-group-text" for="plot-type">Chart Type</label>
+        <select class="form-select" id="plot-type">
+          <option value="line">Line</option>
+          <option value="bar">Bar</option>
+          <option value="pie">Pie</option>
+        </select>
+      </div>
+      <div class="input-group mb-3">
+        <label class="input-group-text" for="x-axis">X-Axis</label>
+        <select class="form-select axis-select" id="x-axis"></select>
+        <label class="input-group-text" for="y-axis">Y-Axis</label>
+        <select class="form-select axis-select" id="y-axis"></select>
+      </div>
+      <button type="button" class="btn btn-primary d-block mx-auto w-50">
+        Show Chart
+      </button>
+      <div id="plot"></div>
+    </template>
 
-        <!-- Bootstrap + Popper + AdminLTE (JS) -->
-        <script src="js/bootstrap-5.3.8.bundle.min.js"></script>
-        <script src="js/overlayscrollbars-2.11.0.browser.es6.min.js"></script>
-        <script src="js/adminlte-4.0.0.min.js"></script>
+    <!-- Alert -->
+    <template id="alert-template">
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+          aria-label="Close"
+        ></button>
+      </div>
+    </template>
 
-        <!-- DataTables -->
-        <script src="js/pdfmake-0.2.7.min.js"></script>
-        <script src="js/vfs_fonts-0.2.7.js"></script>
-        <script src="js/datatables-3.0.0.min.js"></script>
+    <!-- Bootstrap + Popper + AdminLTE (JS) -->
+    <script src="js/bootstrap-5.3.8.bundle.min.js"></script>
+    <script src="js/overlayscrollbars-2.11.0.browser.es6.min.js"></script>
+    <script src="js/adminlte-4.0.0.min.js"></script>
 
-        <!-- Danfo -->
-         <script src="js/danfo-1.2.0.min.js"></script>
+    <!-- DataTables -->
+    <script src="js/pdfmake-0.2.7.min.js"></script>
+    <script src="js/vfs_fonts-0.2.7.js"></script>
+    <script src="js/datatables-3.0.0.min.js"></script>
 
-        <!-- Base Components-->
-        <script src="components/page-nav.js"></script>
-        <script src="components/table-nav.js"></script>
-    </body>
+    <!-- Danfo -->
+    <script src="js/danfo-1.2.0.min.js"></script>
+
+    <!-- Base Components-->
+    <script src="components/page-nav.js"></script>
+    <script src="components/table-nav.js"></script>
+  </body>
 </html>
