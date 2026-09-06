@@ -100,7 +100,7 @@ class PageNav extends HTMLElement {
     if (template) return (this.template = template);
 
     this.template = document.createElement("template");
-    const page = await fetch(templateId || `pages/${this.id}/${this.id}.html`);
+    const page = await fetch(templateId || `pages/${this.id}/${this.id}.html`, { mode: "same-origin" });
 
     this.template.innerHTML = await page.text();
     return this.template;
