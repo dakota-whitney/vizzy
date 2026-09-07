@@ -46,19 +46,9 @@
             <li id="storage" class="nav-item">
               <a class="nav-link"></a>
             </li>
-            <upload-page
-              id="upload"
-              data-name="Upload"
-              data-icon="upload"
-              data-header="Upload"
-            >
+            <upload-page id="upload" data-name="Upload" data-icon="upload">
             </upload-page>
-            <home-page
-              id="home"
-              data-name="Home"
-              data-icon="house"
-              data-header="Welcome"
-            >
+            <home-page id="home" data-name="Home" data-icon="house">
             </home-page>
           </ul>
         </div>
@@ -145,8 +135,17 @@
     <!-- Danfo -->
     <script src="js/danfo-1.2.0.min.js"></script>
 
-    <!-- Base Components-->
-    <script src="components/page-nav.js"></script>
-    <script src="components/table-nav.js"></script>
+    <!-- Pages -->
+    <script src="home/home.js" type="module"></script>
+    <script src="upload/upload.js" type="module"></script>
+
+    <!-- Initialization script -->
+    <script type="module">
+      import { PageNav } from "/components/page-nav.js";
+      import { TableNav } from "/components/table-nav.js";
+
+      PageNav.onLoad();
+      TableNav.onLoad();
+    </script>
   </body>
 </html>
