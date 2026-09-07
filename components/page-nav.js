@@ -1,4 +1,7 @@
-class PageNav extends HTMLElement {
+// Define the base PageNav custom element class
+// Each top nav bar link will inherit from this class
+export class PageNav extends HTMLElement {
+  // Get static references to DOM elements
   static {
     this.spinner = document.querySelector(".spinner-border");
     this.wrapper = document.querySelector(".app-wrapper");
@@ -8,131 +11,116 @@ class PageNav extends HTMLElement {
     this.alert = document.getElementById("alert-template");
     this.content = document.getElementById("page-content");
   }
-  static #navs = {};
-  static get navs() {
-    return this.#navs;
-  }
-  static set navs(pageNav) {
-    this.#navs[pageNav.slugify()] = this.sidebar.appendChild(pageNav);
-  }
+
+  // Define static onLoad method
+  // This is called when the app first loads
   static async onLoad() {
-    const topNavs = [...this.navbar.querySelectorAll("*")];
-    const sideNavs = [...this.sidebar.querySelectorAll("*")];
-    const navs = [...topNavs, ...sideNavs].filter((nav) =>
-      nav.localName.includes("page"),
+    this.default = this.navbar.querySelector("[data-name]:last-child");
+    let initialPage = decodeURIComponent(location.hash.substring(1));
+    initialPage =
+      this.wrapper.querySelector(`[data-name="${initialPage}"]`) ||
+      this.default;
+    console.log(initialPage);
+    await initialPage.render(false);
+    const initialURI = encodeURIComponent(initialPage.dataset.name);
+    history.replaceState(
+      { page: initialPage.dataset.name },
+      "",
+      `#${initialURI}`,
     );
-
-    for await (const { id } of navs) {
-      try {
-        await import(`../pages/${id}/${id}.js`);
-      } catch (e) {
-        console.warn(`No custom element for ${id}`);
-      }
-    }
-
-    this.default = navs[navs.length - 1];
-    this.#navs = Object.fromEntries(navs.map((nav) => [nav.slugify(), nav]));
-
-    let slug = location.hash.split("/").pop();
-
-    const initialPage = this.#navs[slug] || this.default;
-    await initialPage.render({ addHistory: false });
-
-    slug = initialPage.slugify();
-    history.replaceState({ page: slug }, "", `/#/${slug}`);
   }
+
+  // Define static onNavigate method that responds to the popstate history event
+  // This runs whenever the user clicks a navbar link
   static async onNavigate(event) {
     if (!event.state) return;
-
-    try {
-      await this.navs[event.state.page]?.render({ addHistory: false });
-    } catch (error) {
-      console.error(error);
-    }
+    console.log(event.state);
+    const nav = this.wrapper.querySelector(`[data-name="${event.state.page}"]`);
+    if (nav) await nav.render(false);
   }
+
+  // Show or hide a page spinner for various operations
   static loading(show = true) {
     if (show) {
       this.spinner.classList.remove("d-none");
-      this.wrapper.style.opacity = "50%";
+      this.wrapper.classList.add("opacity-50");
     } else {
       this.spinner.classList.add("d-none");
-      this.wrapper.style.opacity = "initial";
+      this.wrapper.classList.remove("opacity-50");
     }
   }
+
+  // Show an alert when there is an application error
   static showAlert(alertText) {
     const alert = this.alert.content.cloneNode(true);
     alert.querySelector(".alert").prepend(alertText);
     this.header.querySelector(".container-fluid").prepend(alert);
   }
+
+  // Define a static method that will show a page header in the content area, if desired
+  static showHeader(header) {
+    this.header.classList.remove("d-none");
+    this.header.querySelector("#page-header").textContent = header;
+  }
+
+  // Define constructor
+  // Ensure instances can access DOM APIs
   constructor() {
     super();
-    this.template = null;
-    this.page = PageNav.content;
   }
-  connectedCallback() {
-    const topNav = this.parentElement.classList.contains("topnav-menu");
 
-    const link = document.createElement(topNav ? "span" : "p");
-    link.textContent = this.dataset.name || this.id;
-    if (topNav) link.style.marginRight = "5px";
-    link.onclick = async () => await this.render({ addHistory: true });
+  // Define custom element connected lifecycle method
+  // This builds the innerHTML of the link when it is added to the DOM
+  connectedCallback() {
+    const linkText = document.createElement("span");
+    linkText.textContent = this.dataset.name;
 
     const a = document.createElement("a");
     a.classList.add("nav-link");
-    a.style.cursor = "pointer";
-    a.append(link);
 
-    if (this.dataset.icon)
-      a.insertAdjacentHTML(
-        topNav ? "beforeend" : "afterbegin",
-        `<i class='nav-icon bi bi-${this.dataset.icon}'></i>`,
-      );
+    const icon = document.createElement("i");
+    icon.classList.add("nav-icon", "bi", `bi-${this.dataset.icon}`, "me-1");
     delete this.dataset.icon;
 
-    const li = document.createElement("li");
-    li.classList.add("nav-item");
+    a.append(icon);
+    a.append(linkText);
 
-    li.append(a);
-    this.append(li);
+    const link = document.createElement("li");
+    link.classList.add("nav-item");
+    link.style.cursor = "pointer";
+
+    link.append(a);
+    link.onclick = async () => await this.render(true);
+
+    this.append(link);
   }
-  async #getTemplate(templateId) {
-    const template = document.getElementById(templateId);
-    if (template) return (this.template = template);
 
-    this.template = document.createElement("template");
-    const page = await fetch(templateId || `pages/${this.id}/${this.id}.html`, { mode: "same-origin" });
-
-    this.template.innerHTML = await page.text();
-    return this.template;
-  }
-  async render({ templateId = "", addHistory = true }) {
-    const active = document.querySelector(".nav-link.active");
+  // Set current nav link to active when clicked
+  setActive() {
+    const active = PageNav.navbar.querySelector(".nav-link.active");
     if (active) active.classList.remove("active");
     this.querySelector("a").classList.add("active");
+  }
 
-    if (!this.template) await this.#getTemplate(templateId);
+  // Fetch page HTML from path parameter and insert it into a new template element
+  // This will cache the HTML to prevent multiple requests on re-renders
+  async getTemplate(htmlPath) {
+    this.template = document.createElement("template");
+    const html = await fetch(htmlPath, { mode: "same-origin" });
+    this.template.innerHTML = await html.text();
+  }
 
-    if (this.dataset.header) this.#showHeader();
-    else PageNav.header.classList.add("d-none");
-
+  // Replace the content area with the page's HTML
+  // Conditionally add history state unless the same page was clicked
+  renderTemplate(addHistory = true) {
     const page = this.template.content.cloneNode(true);
     PageNav.content.replaceChildren(page);
-
-    const slug = this.slugify();
-    if (addHistory) history.pushState({ page: slug }, "", `/#/${slug}`);
-  }
-  #showHeader() {
-    PageNav.header.classList.remove("d-none");
-    PageNav.header.querySelector("#page-header").textContent =
-      this.dataset.header;
-  }
-  slugify() {
-    const slug = this.dataset.name.toLowerCase();
-    return slug.replaceAll(/\s+/g, "-");
+    if (addHistory && this.dataset.name !== history.state?.page) {
+      const navURI = encodeURIComponent(this.dataset.name);
+      history.pushState({ page: this.dataset.name }, "", `#${navURI}`);
+    }
   }
 }
 
-customElements.define("page-nav", PageNav);
-PageNav.onLoad().then(() =>
-  window.addEventListener("popstate", (e) => PageNav.onNavigate(e)),
-);
+// Add the onNavigate method to the popstate event
+window.addEventListener("popstate", (e) => PageNav.onNavigate(e));
